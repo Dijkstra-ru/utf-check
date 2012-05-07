@@ -3,41 +3,38 @@ package ru.dijkstra
 import scala.collection.mutable.ListBuffer
 import scalax.file._
 import java.nio._
-import java.io.FileInputStream
 import scala._
+import java.io.{Closeable, FileInputStream}
 
 
 case class Options(masks: List[String], options: Map[String, String])
 
-class BufferedFileHandle(file: Path) {
+class BufferedFileHandle(file: Path) extends Closeable {
   if (!file.exists || !file.isFile)
     throw new Exception("File reading error")
-  val BUFFER_SIZE = 4096
-  val buffer = ByteBuffer allocate(BUFFER_SIZE)
+  val BUFFER_SIZE = 4096;
+  val buffer = ByteBuffer allocate(BUFFER_SIZE )
   val channel = (new FileInputStream(file.path)) getChannel()
   var size = channel.read(buffer)
-  var pos = 0
-  var empty = false
+  buffer.flip()
   def next(): Int = {
-    if (empty) return -1
+    if (buffer.position() == BUFFER_SIZE) {
+      size = channel.read(buffer)
+      buffer.flip()
+    }
+    if (buffer.position() == size)
+      return -1;
     /*
      * Буфер работает странно и мусорит в старших байтах
      * От этого не спасает метод clear
+     * Баг подтверждается после переписывания класса без использования pos
      * TODO: сделать что-то человеческое вместо этой байтосодомии
      */
-    val result = buffer.get(pos) & 0x000000FF
-    pos += 1
-    if (pos == size) {
-      pos = 0
-      size = channel.read(buffer)
-      if (size == -1) {
-        empty = true
-        channel.close()
-      }
-    }
-    result
+    buffer.get() & 0x000000FF
   }
+  override def close() { channel.close() }
 }
+
 
 object UtfChecker {
   def parseArgs(args: List[String]) = {
@@ -62,7 +59,7 @@ object UtfChecker {
   }
 
   def main(args: Array[String]) {
-    val f = Path("c:\\dev\\tex2")
+    val f = Path("src\\test\\resources\\mock")
     val bf = new BufferedFileHandle(f)
     var c = bf.next()
     while (c != -1) {
