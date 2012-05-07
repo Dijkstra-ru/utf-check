@@ -1,6 +1,7 @@
 package ru.dijkstra
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FreeSpec
+import collection.mutable.ListBuffer
 import scalax.file.Path
 
 class Test  extends FreeSpec with ShouldMatchers {
@@ -55,5 +56,16 @@ class Test  extends FreeSpec with ShouldMatchers {
       thrown.getMessage should equal ("Malformed parameter: -=")
     }
   }
-
+  "Byte reader test" - {
+    "  Generic byte sequence less than 4kb" in {
+    val f = Path("src\\test\\resources\\mock")
+    val bf = new BufferedFileHandle(f)
+    var lb = ListBuffer[Int]()
+    lb += bf.next()
+    while (lb.last != -1) {
+      lb += bf.next()
+    }
+    lb.toList should be === List(0xef, 0xbb, 0xbf, 0x61, 0xd1, 0x84, 0x32, 0x33, -1)
+    }
+  }
 }
