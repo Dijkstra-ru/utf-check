@@ -3,23 +3,26 @@ package ru.dijkstra
 import scala.collection.mutable.ListBuffer
 import scalax.file._
 import java.nio._
-import scala._
 import java.io.{Closeable, FileInputStream}
+import scala._
+import org.scalatest.matchers.Matchers._
 
 
 case class Options(masks: List[String], options: Map[String, String])
+case class Sentence(isBOM: Boolean, isValid: Boolean)
 
 class BufferedFileHandle(file: Path) extends Closeable {
   if (!file.exists || !file.isFile)
     throw new Exception("File reading error")
   // Играюсь с размером буффера
-  val BUFFER_SIZE = 6;
+  val BUFFER_SIZE = 4096;
+  assert(BUFFER_SIZE > 3) // To work with BOM
   val buffer = ByteBuffer allocate(BUFFER_SIZE )
   val channel = (new FileInputStream(file.path)) getChannel()
   var size = channel.read(buffer)
   buffer.flip()
   def next(): Int = {
-    if (buffer.position() == BUFFER_SIZE - 1) {
+    if (buffer.position() == BUFFER_SIZE) {
       size = channel.read(buffer)
       buffer.flip()
     }
@@ -33,8 +36,14 @@ class BufferedFileHandle(file: Path) extends Closeable {
      */
     buffer.get() & 0x000000FF
   }
+
+  /**
+   * Read current block again
+   */
+  def rollback() = buffer.flip()
   override def close() { channel.close() }
 }
+
 
 
 object UtfChecker {
@@ -57,6 +66,11 @@ object UtfChecker {
       }
     }
     Options(masks.toList, options)
+  }
+
+  def checkFile(handle: BufferedFileHandle) : Sentence = {
+    // Find BOM
+    val isBOM = if (List(handle.next()),handle.next()),handle.next()) == List(0xef, 0xbb, 0xbf)
   }
 
   def main(args: Array[String]) {
