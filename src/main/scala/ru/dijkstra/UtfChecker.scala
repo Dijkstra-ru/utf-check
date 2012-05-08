@@ -4,8 +4,6 @@ import scala.collection.mutable.ListBuffer
 import scalax.file._
 import java.nio._
 import java.io.FileInputStream
-import scala.Predef._
-import scala._
 
 
 case class Options(masks: List[String], options: Map[String, String])
@@ -93,9 +91,19 @@ object UtfChecker {
   }
 
   def main(args: Array[String]) {
-    val res = UtfChecker.checkFile(Path("src\\test\\resources\\mock"))
-    println(res.isBOM)
-    println(res.isValid)
+    val opt = parseArgs(args.toList)
+    val dir = if (opt.options.contains("dir"))
+      opt.options.get("dir")
+    else "."
+    val path:scalax.file.Path = Path(dir)
+      /*
+      Не может разрешить зависимость, хотя используется окончательно и бесповоротно уточнённое имя
 
+      [error] C:\dev\utf-check\src\main\scala\ru\dijkstra\UtfChecker.scala:98: overloaded method value apply with alternatives:
+      [error]   (jfile: java.io.File)scalax.file.Path <and>
+      [error]   (path: String*)(implicit fileSystem: scalax.file.FileSystem)scalax.file.Path
+      [error]  cannot be applied to (java.io.Serializable)
+      [error]     val path:scalax.file.Path = Path(dir)
+      */
   }
 }
