@@ -12,13 +12,14 @@ case class Options(masks: List[String], options: Map[String, String])
 class BufferedFileHandle(file: Path) extends Closeable {
   if (!file.exists || !file.isFile)
     throw new Exception("File reading error")
-  val BUFFER_SIZE = 4096;
+  // Играюсь с размером буффера
+  val BUFFER_SIZE = 6;
   val buffer = ByteBuffer allocate(BUFFER_SIZE )
   val channel = (new FileInputStream(file.path)) getChannel()
   var size = channel.read(buffer)
   buffer.flip()
   def next(): Int = {
-    if (buffer.position() == BUFFER_SIZE) {
+    if (buffer.position() == BUFFER_SIZE - 1) {
       size = channel.read(buffer)
       buffer.flip()
     }
