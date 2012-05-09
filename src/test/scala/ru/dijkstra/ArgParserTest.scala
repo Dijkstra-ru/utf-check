@@ -4,13 +4,13 @@ import org.scalatest.FreeSpec
 import scala._
 
 class ArgParserTest extends FreeSpec with ShouldMatchers {
-  "Arg parser test" - {
+   "Arg parser test" - {
     "  No args " in {
       val a = UtfChecker.parseArgs(List())
       a.masks should have length 0
       a.options.toList should have length 0
     }
-    "  Sole mask " in {
+     "  Sole mask " in {
       val a = UtfChecker.parseArgs(List("*.*"))
       a.masks should be === List("*.*")
       a.options.toList should have length 0

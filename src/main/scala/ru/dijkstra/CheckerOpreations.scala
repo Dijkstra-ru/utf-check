@@ -34,14 +34,14 @@ def checkFile(file: Path) : Sentence = {
     } catch {
       case ex:Exception => {
         isValid = false
-        println(ex.getMessage)
+        //println(ex.getMessage)
       }
     }
     Sentence(isBOM, isValid)
   }
 
-  object u8Len {
-    def unapply(c: Byte) = {
+  object u8Len_ {
+    def unapply(c: Int) = {
       if (((c ^ 0x80) | 0x7f) == 0xff) Some(1)
       else if (((c ^ 0x40) | 0x3f) == 0xff) Some(2)
       else if (((c ^ 0x20) | 0x1f) == 0xff) Some(3)
@@ -52,17 +52,35 @@ def checkFile(file: Path) : Sentence = {
     }
   }
 
+  object u8Len {
+    def unapply(e: Int) = {
+      val c = e & 0xff
+      if ((c >> 7) == 0) Some(1)
+      else if ((c >> 5) == 6 /*110b*/) Some(2)
+      else if ((c >> 4) == 14 /*1110b*/) Some(3)
+      else if ((c >> 3) == 30 /*11110b*/) Some(4)
+      else if ((c >> 2) == 62 /*111110b*/) Some(5)
+      else if ((c >> 1) == 126 /*1111110b*/) Some(6)
+      else if ((c >> 6) == 3 /*10b*/) None
+      else None
+
+    }
+  }
+
   def check(in: ByteBuffer) {
     val b = in.get()
-    b match {
-      case u8Len(l) => checkData(l - 1, in)
-      case _ => throw new Exception("check FAIL")
+    u8Len.unapply(b) match {
+      case Some(l) => checkData(l - 1, in)
+      case None => throw new Exception("Check FAIL")
     }
+
   }
 
   def checkData(length: Int, in: ByteBuffer) {
     for (i <- 0 until length) {
-      if (((in.get() & 0xC0) /*11000000*/  >> 6) != 2 /*10*/)
+      val c = in.get()
+      //println(Integer.toBinaryString(c & 0xFF))
+      if (((c & 0xFF) >> 6) != 2 /*10b*/)
         throw new Exception("checkData fail @ " + i)
     }
   }

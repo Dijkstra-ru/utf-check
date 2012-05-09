@@ -12,7 +12,7 @@ import java.util.Arrays
  * @author eiennohito
  * @since 08.05.12
  */
-
+           /*
 class ReadTest extends FreeSpec with ShouldMatchers {
 
   def data(in: Array[Byte]) = new BeMatcher[ByteBuffer] {
@@ -53,3 +53,4 @@ class ReadTest extends FreeSpec with ShouldMatchers {
     }
   }
 }
+*/
