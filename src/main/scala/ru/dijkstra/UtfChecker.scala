@@ -1,13 +1,10 @@
 package ru.dijkstra
 
 import scala.collection.mutable.ListBuffer
-import scalax.file._
-import java.nio._
-import java.io.FileInputStream
-
+import scalax.file.Path
+import scalax.file.PathMatcher.GlobPathMatcher
 
 case class Options(masks: List[String], options: Map[String, String])
-case class Sentence(isBOM: Boolean, isValid: Boolean)
 
 object UtfChecker {
   def parseArgs(args: List[String]) = {
@@ -31,79 +28,60 @@ object UtfChecker {
     Options(masks.toList, options)
   }
 
-  def checkFile(file: Path) : Sentence = {
-    if (!file.exists || !file.isFile)
-      throw new Exception("File reading error")
-    val BUFFER_SIZE = 4096;
-    val buffer = ByteBuffer.allocate(BUFFER_SIZE)
-    val channel = (new FileInputStream(file.path)) getChannel()
-    val size = channel.read(buffer)
-    buffer.flip()
+  //def buildPattern(masks: List[String]) = "{" + (masks reduce(_ + "," + _)) + "}"
+  def matches (masks: List[String], file: String) =
+  if (masks.isEmpty) true
+  else
+  if (masks.length == 1)
+    GlobPathMatcher(masks.head)(file)
+    else
+    masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
 
-    0x01
-    val isBOM = if (size < 3) false
-                else (List(buffer.get(), buffer.get(), buffer.get())
-                   == List(-17: Byte, -69: Byte, -65: Byte)) // EF BB BF
-    if (!isBOM) buffer.rewind()
-    var isValid = true
-    try {
-      var eof = false
-      do {
-        if (buffer.remaining() < 6 || eof) {
-          buffer.compact()
-          val i = channel.read(buffer)
-          buffer.flip()
-          eof = i == -1
-        }
-        check(buffer)
-      } while (!eof)
-    } catch {
-      case _ => isValid = false
-    }
-    Sentence(isBOM, isValid)
-  }
-
-  object u8Len {
-    def unapply(c: Byte) = {
-      if (((c ^ 0x80) | 0x7f) == 0xff) Some(1)
-      else if (((c ^ 0x40) | 0x3f) == 0xff) Some(2)
-      else if (((c ^ 0x20) | 0x1f) == 0xff) Some(3)
-      else if (((c ^ 0x10) | 0x0f) == 0xff) Some(4)
-      else if (((c ^ 0x08) | 0x07) == 0xff) Some(5)
-      else if (((c ^ 0x04) | 0x03) == 0xff) Some(6)
-      else throw new Exception()
-    }
-  }
-
-  def check(in: ByteBuffer) {
-    val b = in.get()
-    b match {
-      case u8Len(l) => checkData(l - 1, in)
-      case _ => throw new Exception()
-    }
-  }
-
-  def checkData(length: Int, in: ByteBuffer) {
-    for (i <- 0 until length) {
-      if (((in.get() & 0xC0) /*11000000*/  >> 6) != 2 /*10*/)
-        throw new Exception()
-    }
-  }
 
   def main(args: Array[String]) {
+    import CheckerOpreations.checkFile
     val opt = parseArgs(args.toList)
-    val dir = if (opt.options.contains("dir"))
-      opt.options.get("dir")
-    else "."
-    val path:scalax.file.Path = Path(dir)
-      /*
-      Не может разрешить зависимость, хотя используется окончательно и бесповоротно уточнённое имя
+    //opt.masks.foreach(println(_))
+    //opt.options.foreach(println(_))
+    val dir = opt.options.get("dir") match {
+      case Some(x) => x
+      case None => "."
+    }
+    val path = Path(dir)
+    if (path.isFile) {
+      //println("Is file")
+      val res = checkFile(path)
+      if (res.isValid)
+        println(path + " is valid")
+      else
+        println(path + " is invalid")
+      if (res.isBOM)
+        println(path + " has BOM")
+    }
+    else {
+      //println("Is directory")
+      var BOMs = 0
+      var invalidFiles = 0
+      path.descendants() foreach {
+        file => if (file.isFile && matches(opt.masks, file.name)) {
+          val res = checkFile(file)
+          if (res.isBOM) {
+            BOMs += 1
+            println(file + " has BOM")
+          } // else println(file + " has no BOM")
+          if (!res.isValid) {
+            invalidFiles += 1
+            println(file + " is not utf8-correct")
+          } // else println(file + " is correct")
+        }
+      }
+      if (invalidFiles == 0)
+        println("All specified files was valid")
+      else println("Total invalid files: " + invalidFiles)
+      if (BOMs == 0)
+        println("No files with BOM found")
+      else println("Total files with BOM: " + invalidFiles)
 
-      [error] C:\dev\utf-check\src\main\scala\ru\dijkstra\UtfChecker.scala:98: overloaded method value apply with alternatives:
-      [error]   (jfile: java.io.File)scalax.file.Path <and>
-      [error]   (path: String*)(implicit fileSystem: scalax.file.FileSystem)scalax.file.Path
-      [error]  cannot be applied to (java.io.Serializable)
-      [error]     val path:scalax.file.Path = Path(dir)
-      */
+    }
   }
 }
