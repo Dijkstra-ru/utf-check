@@ -12,7 +12,7 @@ def checkFile(file: Path) : Sentence = {
       throw new Exception("File reading error")
     val BUFFER_SIZE = 4096;
     val buffer = ByteBuffer.allocate(BUFFER_SIZE)
-    val channel = (new FileInputStream(file.path)) getChannel()
+    val channel = (new FileInputStream(file.path)).getChannel()
     val size = channel.read(buffer)
     buffer.flip()
     val isBOM = if (size < 3) false
@@ -32,7 +32,10 @@ def checkFile(file: Path) : Sentence = {
         check(buffer)
       } while (!eof)
     } catch {
-      case _ => isValid = false
+      case ex:Exception => {
+        isValid = false
+        println(ex.getMessage)
+      }
     }
     Sentence(isBOM, isValid)
   }
@@ -45,7 +48,7 @@ def checkFile(file: Path) : Sentence = {
       else if (((c ^ 0x10) | 0x0f) == 0xff) Some(4)
       else if (((c ^ 0x08) | 0x07) == 0xff) Some(5)
       else if (((c ^ 0x04) | 0x03) == 0xff) Some(6)
-      else throw new Exception()
+      else throw new Exception("u8Len FAIL")
     }
   }
 
@@ -53,14 +56,14 @@ def checkFile(file: Path) : Sentence = {
     val b = in.get()
     b match {
       case u8Len(l) => checkData(l - 1, in)
-      case _ => throw new Exception()
+      case _ => throw new Exception("check FAIL")
     }
   }
 
   def checkData(length: Int, in: ByteBuffer) {
     for (i <- 0 until length) {
       if (((in.get() & 0xC0) /*11000000*/  >> 6) != 2 /*10*/)
-        throw new Exception()
+        throw new Exception("checkData fail @ " + i)
     }
   }
 }

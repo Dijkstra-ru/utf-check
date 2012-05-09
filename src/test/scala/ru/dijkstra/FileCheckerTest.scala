@@ -48,17 +48,28 @@ class FileCheckerTest extends FreeSpec with ShouldMatchers {
         res.isValid should be === false
       }
     }
-    "  漢字.txt" - {
+    "  kanji.txt" - {
       val file = Path("src\\test\\resources\\漢字.txt")
       val res = checkFile(file)
       " BOM" in {
         res.isBOM should be === true
       }
-      /* " Valid " in {
+      " Valid " in {
         res.isValid should be === true
       }
-      */
     }
+
+    "   tekisuto.txt" - {
+      val file = Path("src\\test\\resources\\tekisuto.txt")
+      val res = checkFile(file)
+      " BOM" in {
+        res.isBOM should be === false
+      }
+       " Valid " in {
+        res.isValid should be === true
+      }
+    }
+
   }
 
 }

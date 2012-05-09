@@ -39,6 +39,9 @@ object UtfChecker {
 
 
   def main(args: Array[String]) {
+    /*import scala.io.Codec
+    Codec.toUTF8("テキスト").foreach(byte => println(Integer.toBinaryString(byte & 0xff)))
+    return*/
     import CheckerOpreations.checkFile
     val opt = parseArgs(args.toList)
     //opt.masks.foreach(println(_))
