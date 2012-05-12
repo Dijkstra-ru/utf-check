@@ -12,13 +12,14 @@ object UtfChecker {
     var masks = ListBuffer[String]()
     args.foreach { arg =>
       arg match {
-        case op if op.startsWith("-") => {
-          if (!op.contains("="))
-            throw new Exception("Malformed parameter: " + op)
-          val key = op.substring(if (op.startsWith("--")) 2 else 1, op.indexOf("="));
-          val value = op.substring(op.indexOf("=") + 1, op.length())
+        case option if option.startsWith("-") => {
+          val start = if (option.startsWith("--")) 2 else 1
+          if (!option.contains("="))
+            throw new Exception("Malformed parameter: " + option)
+          val key = option.substring(start, option.indexOf("="));
+          val value = option.substring(option.indexOf("=") + 1, option.length())
           if (key.length() == 0 || value.length() == 0)
-            throw new Exception("Malformed parameter: " + op)
+            throw new Exception("Malformed parameter: " + option)
           options += (key -> value)
         }
         case mask => masks += mask
@@ -27,29 +28,43 @@ object UtfChecker {
     Options(masks.toList, options)
   }
 
+  //def buildPattern(masks: List[String]) = "{" + (masks reduce(_ + "," + _)) + "}"
   def matches (masks: List[String], file: String) =
-    if (masks.isEmpty) true
-    else if (masks.length == 1) GlobPathMatcher(masks.head)(file)
-    else masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
+  if (masks.isEmpty) true
+  else
+  if (masks.length == 1)
+    GlobPathMatcher(masks.head)(file)
+    else
+    masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
+
 
   def main(args: Array[String]) {
-    import CheckerOperations.checkFile
+    /*import scala.io.Codec
+    Codec.toUTF8("テキスト").foreach(byte => println(Integer.toBinaryString(byte & 0xff)))
+    return*/
+
+    return
+    import CheckerOpreations.checkFile
     val opt = parseArgs(args.toList)
+    //opt.masks.foreach(println(_))
+    //opt.options.foreach(println(_))
     val dir = opt.options.get("dir") match {
       case Some(x) => x
       case None => "."
     }
     val path = Path(dir)
     if (path.isFile) {
+      //println("Is file")
       val res = checkFile(path)
       if (res.isValid)
-        println(path.path + " is valid")
+        println(path + " is valid")
       else
-        println(path.path + " is invalid")
+        println(path + " is invalid")
       if (res.isBOM)
-        println(path.path + " has BOM")
+        println(path + " has BOM")
     }
     else {
+      //println("Is directory")
       var BOMs = 0
       var invalidFiles = 0
       path.descendants() foreach {
@@ -57,12 +72,12 @@ object UtfChecker {
           val res = checkFile(file)
           if (res.isBOM) {
             BOMs += 1
-            println(file.path + " has BOM")
-          }
+            println(file + " has BOM")
+          } // else println(file + " has no BOM")
           if (!res.isValid) {
             invalidFiles += 1
-            println(file.path + " is not utf8-correct")
-          }
+            println(file + " is not utf8-correct")
+          } // else println(file + " is correct")
         }
       }
       if (invalidFiles == 0)
@@ -71,6 +86,7 @@ object UtfChecker {
       if (BOMs == 0)
         println("No files with BOM found")
       else println("Total files with BOM: " + invalidFiles)
+
     }
   }
 }
