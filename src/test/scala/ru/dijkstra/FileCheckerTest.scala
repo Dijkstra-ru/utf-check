@@ -6,7 +6,7 @@ import scalax.file.Path
 
 
 class FileCheckerTest extends FreeSpec with ShouldMatchers {
-  import CheckerOpreations.checkFile
+  import CheckerOperations.checkFile
   "FileCheckerTest" - {
     "  Canonical mock" - {
       val file = Path("src\\test\\resources\\mock")
