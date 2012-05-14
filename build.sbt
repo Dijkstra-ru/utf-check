@@ -1,4 +1,6 @@
 import sbt._
+import sbtassembly.Plugin._
+import AssemblyKeys._
 
 organization := "ru.dijkstra"
 
@@ -18,3 +20,12 @@ libraryDependencies ++=
 libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-core" % "0.2.0"
 
 libraryDependencies +=  "com.github.scala-incubator.io" %% "scala-io-file" % "0.2.0"
+
+test in assembly := {}
+
+mainClass in assembly := Some("ru.dijkstra.UtfChecker")
+
+seq(ProguardPlugin.proguardSettings :_*)
+
+proguardOptions += "-keep class ru.dijkstra.** { *; }"
+
