@@ -1,8 +1,8 @@
 package ru.dijkstra
 
 import scala.collection.mutable.ListBuffer
-import scalax.file.Path
-import scalax.file.PathMatcher.GlobPathMatcher
+import scalax.file.{PathMatcher, Path}
+import scalax.file.PathMatcher.{GlobNameMatcher, GlobPathMatcher}
 
 case class Options(masks: List[String], options: Map[String, String])
 
@@ -30,11 +30,6 @@ object UtfChecker {
     Options(masks.toList, options)
   }
 
-  def matches (masks: List[String], file: String) =
-    if (masks.isEmpty) true
-    else if (masks.length == 1) GlobPathMatcher(masks.head)(file)
-    else masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
-
   def showHelp () {
     println("Checks specified files for UTF8 compability and finds BOMs")
     println("Usage: UTFChecker [options] [masks]")
@@ -47,6 +42,8 @@ object UtfChecker {
     println("Use DOS-like masks like '*.*', '*.h', 'p??o.txt'")
     println("Masks list is whitespace-separated. Subdirectories are checked recursively")
   }
+
+  def matcher(masks: List[String]) = masks map { m => new GlobNameMatcher(m) : PathMatcher } reduceLeft(_ || _)
 
   def main(args: Array[String]) {
     import CheckerOperations.checkFile
@@ -72,25 +69,28 @@ object UtfChecker {
     else {
       var BOMs = 0
       var invalidFiles = 0
-      path.descendants() foreach {
-        file => if (file.isFile && matches(opt.masks, file.name)) {
-          val res = checkFile(file)
-          if (res.isBOM) {
-            BOMs += 1
-            println(file.path + " has BOM")
-          }
-          if (!res.isValid) {
-            invalidFiles += 1
-            println(file.path + " is not utf8-correct")
-          }
+      var total = 0
+      path.descendants(filter = matcher(opt.masks)).filter(_.isFile) foreach ( file => {
+        val res = checkFile(file)
+        if (res.isBOM) {
+          BOMs += 1
+          println(file.path + " has BOM")
         }
-      }
+        if (!res.isValid) {
+          invalidFiles += 1
+          println(file.path + " is not utf8-correct")
+        }
+        total += 1
+      })
       if (invalidFiles == 0)
-        println("All specified files was valid")
+        println("All specified files were valid")
       else println("Total invalid files: " + invalidFiles)
       if (BOMs == 0)
         println("No files with BOM found")
       else println("Total files with BOM: " + invalidFiles)
+      if (total != 0) {
+        println("Checked %d files".format(total))
+      }
     }
   }
 }
