@@ -3,6 +3,7 @@ package ru.dijkstra
 import java.io.FileInputStream
 import scalax.file.Path
 import java.nio.{BufferUnderflowException, ByteBuffer}
+import annotation.tailrec
 
 case class Sentence(isBOM: Boolean, isValid: Boolean)
 
@@ -15,8 +16,8 @@ object CheckerOperations {
     if (!file.exists || !file.isFile) {
       throw new Exception("File reading error")
     }
-    for (stream <- managed(new FileInputStream(file.path));
-         channel <- managed(stream.getChannel)) {
+    val a = for (stream <- managed(new FileInputStream(file.path));
+         channel <- managed(stream.getChannel)) yield {
       val size = channel.read(buffer)
       buffer.flip()
       val isBOM = if (size < 3) false
@@ -41,18 +42,28 @@ object CheckerOperations {
           case e: BufferUnderflowException => isValid = false
         }
       } while (!eof && isValid)
-
       Sentence(isBOM, isValid)
     }
+    a.reflect
   }
 
   object u8Len {
+    private val marker = 0x80
+    private val full = 0xff
+    private val fullB = full.toByte
+
     def unapply(c: Byte): Option[Int] = {
-      if ((c >> 7) == 0) return Some(1)
-      for (i <- 1 until 7)
-        if (((c ^ (0x80 >> i)) | ((0x80 >> i) - 1)).toByte == 0xFF.toByte)
-          return Some(i)
-      None
+      @tailrec def rec(in: Byte, shift: Int): Option[Int] = {
+        if (shift >= 7) {
+          None
+        } else {
+          val m = (marker >>> shift).toByte
+          val rest = (full >>> (shift + 1)).toByte
+          val total = (in ^ m) | rest
+          if (total == fullB) Some(1 max shift) else rec(in, shift + 1)
+        }
+      }
+      rec(c, 0)
     }
   }
 
