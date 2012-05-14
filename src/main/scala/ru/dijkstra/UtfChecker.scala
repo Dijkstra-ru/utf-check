@@ -33,6 +33,7 @@ object UtfChecker {
     else masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
 
   def main(args: Array[String]) {
+    import CheckerOperations.checkFile
     val opt = parseArgs(args.toList)
     val dir = opt.options.get("dir") match {
       case Some(x) => x
