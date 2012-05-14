@@ -1,38 +1,41 @@
 package ru.dijkstra
 
 import java.io.FileInputStream
-import java.nio.ByteBuffer
 import scalax.file.Path
+import java.nio.{BufferUnderflowException, ByteBuffer}
 
 case class Sentence(isBOM: Boolean, isValid: Boolean)
 
 object CheckerOperations {
 def checkFile(file: Path) : Sentence = {
-    if (!file.exists || !file.isFile)
-      throw new Exception("File reading error")
-    val BUFFER_SIZE = 4096;
-    val buffer = ByteBuffer.allocate(BUFFER_SIZE)
-    val channel = (new FileInputStream(file.path)).getChannel()
-    val size = channel.read(buffer)
-    buffer.flip()
-    val isBOM = if (size < 3) false
-      else (List(buffer.get(), buffer.get(), buffer.get())
-        == List(0xEF.toByte, 0xBB.toByte, 0xBF.toByte))
-    if (!isBOM) buffer.rewind()
-    var isValid = true
-    var eof = false
-    do {
-      if (buffer.remaining() < 6 || eof) {
-        buffer.compact()
-        val i = channel.read(buffer)
-        buffer.flip()
-        eof = i == -1
-      }
-      check(buffer) match {
-        case Some(_) => isValid = false
-        case None =>
-      }
-    } while (!eof && isValid)
+      if (!file.exists || !file.isFile)
+        throw new Exception("File reading error")
+      val BUFFER_SIZE = 4096;
+      val buffer = ByteBuffer.allocate(BUFFER_SIZE)
+      val channel = (new FileInputStream(file.path)).getChannel()
+      val size = channel.read(buffer)
+      buffer.flip()
+      val isBOM = if (size < 3) false
+        else (List(buffer.get(), buffer.get(), buffer.get())
+          == List(0xEF.toByte, 0xBB.toByte, 0xBF.toByte))
+      if (!isBOM) buffer.rewind()
+      var isValid = true
+      var eof = false
+      do {
+        if (buffer.remaining() < 6 || eof) {
+          buffer.compact()
+          val i = channel.read(buffer)
+          buffer.flip()
+          eof = i == -1
+        }
+        try {
+          check(buffer) match {
+            case Some(_) => isValid = false
+            case None =>
+          }
+        } catch { case e: BufferUnderflowException => isValid = false }
+      } while (!eof && isValid)
+
     Sentence(isBOM, isValid)
   }
 

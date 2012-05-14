@@ -13,13 +13,16 @@ object UtfChecker {
     args.foreach { arg =>
       arg match {
         case option if option.startsWith("-") => {
-          if (!option.contains("="))
-            throw new Exception("Malformed parameter: " + option)
-          val key = option.substring(if (option.startsWith("--")) 2 else 1, option.indexOf("="));
-          val value = option.substring(option.indexOf("=") + 1, option.length())
-          if (key.length() == 0 || value.length() == 0)
-            throw new Exception("Malformed parameter: " + option)
-          options += (key -> value)
+          if (option.contains("=")) {
+            val key = option.substring(if (option.startsWith("--")) 2 else 1, option.indexOf("="));
+            val value = option.substring(option.indexOf("=") + 1, option.length())
+            if (key.length() == 0 || value.length() == 0)
+              throw new Exception("Malformed parameter: " + option)
+            options += (key -> value)
+          } else {
+            val key = option.substring(if (option.startsWith("--")) 2 else 1, option.length());
+            options += (key -> "")
+          }
         }
         case mask => masks += mask
       }
@@ -32,8 +35,26 @@ object UtfChecker {
     else if (masks.length == 1) GlobPathMatcher(masks.head)(file)
     else masks map { GlobPathMatcher(_)(file) } reduce (_ || _)
 
+  def showHelp () {
+    println("Checks specified files for UTF8 compability and finds BOMs")
+    println("Usage: UTFChecker [options] [masks]")
+    println("e.g. UTFChecker --dir=\"/dev/prog number one\" *.h *.cpp *.java")
+    println("     UTFChecker --dir=UtfChecker.scala")
+    println("     UTFChecker *.sh")
+    println("Options")
+    println("  --help — show this message")
+    println("  --dir  — specify file or directory to check. Default:'--dir=.'")
+    println("Use DOS-like masks like '*.*', '*.h', 'p??o.txt'")
+    println("Masks list is whitespace-separated. Subdirectories are checked recursively")
+  }
+
   def main(args: Array[String]) {
+    import CheckerOperations.checkFile
     val opt = parseArgs(args.toList)
+    if (opt.options.contains("help") || ((opt.options.size == 0) && (opt.masks.size == 0))) {
+      showHelp()
+      sys.exit()
+    }
     val dir = opt.options.get("dir") match {
       case Some(x) => x
       case None => "."
